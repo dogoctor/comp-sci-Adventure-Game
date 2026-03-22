@@ -1,17 +1,26 @@
-# gamefunctions2.py
-# Author: Cael O'Dell
-# Description: Function for handling game economy, generating custom enemies, and UI formatting
-# Computer Science
-# 3-01-2026
+"""
+Module: gamefunctions.py
+Author: Cael O'Dell
+Description: This module contains functions for a text-based
+geology game. The script generates enemies, handles economy,
+and formats the user interface for the shop and welcome screen.
+Date: 3-22-2026
 
+"""
 import random
 
 
 def purchase_item(itemPrice, startingMoney, quantityToPurchase=1):
     """
     Calculates max affordable items and remaining balance.
-    Params: itemPrice (number), startingMoney (number), quantityToPurchase (int).
-    Returns: tuple of (actual_purchased, leftover_money).
+
+        Parameters:
+            itemPrice (float): The cost of the item.
+            startingMoney (float): The player's current balance.
+            quantityToPurchase (int): The number of items to purchase.
+
+    Returns:
+         A tuple of (actual_purchased, leftover_money).
     """
     # figure out the absolute max we can afford
     max_affordable = startingMoney // itemPrice
@@ -24,11 +33,18 @@ def purchase_item(itemPrice, startingMoney, quantityToPurchase=1):
     return actual_purchased, leftover_money
 
 
-def new_random_monster():
+def random_monster():
     """
-    Generates a random custom enemy.
-    Params: None.
-    Returns: dict containing monster name, description, health, power, and money.
+    Generates a random geology-themed enemy.
+    Parameters:
+        None.
+    Returns:
+        dict: containing monster:
+            name
+            description
+            health
+            power
+            money
     """
     # initialize the required dictionary keys
     monster = {"name": "", "description": "", "health": 0, "power": 0, "money": 0}
@@ -64,8 +80,13 @@ def new_random_monster():
 def print_welcome(name, width):
     """
     Prints a welcome message centered within a specified width.
-    Params: name (str), width (int)
-    Returns: None
+
+    Parameters:
+        name (str): Name of the player.
+        width (int): Total character width of the welcome message.
+
+    Returns:
+        None
     """
     welcome_message = f"Hello, {name}!"
     # ^ centers the text based on width parameter
@@ -75,7 +96,12 @@ def print_welcome(name, width):
 def print_shop_menu(item1Name, item1Price, item2Name, item2Price):
     """
     Prints a formatted shop menu with two items and their prices.
-    Params: item1Name (str), item1Price (float), item2Name (str), item2Price (float)
+
+    Parameters:
+        item1Name (str): The name of the first item.
+        item1Price (float): The price of the first item.
+        item2Name (str): The name of the second item.
+        item2Price (float): The price of the second item.
     Returns: None
     """
     # format the prices to have two decimals and a dollar sign first
@@ -91,7 +117,8 @@ def print_shop_menu(item1Name, item1Price, item2Name, item2Price):
     print("\\----------------------/")
 
 
-if __name__ == "__main__":
+def test_functions():
+    """Runs tests for all functions in this module."""
     print('--- Testing purchase_item ---')
     print("Inputs: itemPrice = 123, startingMoney = 1000, quantityToPurchase = 3")
     num_purchased, leftover = purchase_item(123, 1000, 3)
@@ -105,17 +132,17 @@ if __name__ == "__main__":
     num_purchased, leftover = purchase_item(341, 2112)
     print(f"Purchased: {num_purchased} | Remaining: {leftover}\n")
 
-    print('--- Testing new_random_monster ---')
-    enemy1 = new_random_monster()
+    print('--- Testing random_monster ---')
+    enemy1 = random_monster()
     print(enemy1['name'])
     print(enemy1['description'])
     print(f"Stats -> HP: {enemy1['health']} | DMG: {enemy1['power']} | Loot: {enemy1['money']}\n")
 
-    enemy2 = new_random_monster()
+    enemy2 = random_monster()
     print(enemy2['name'])
     print(f"Stats -> HP: {enemy2['health']} | DMG: {enemy2['power']} | Loot: {enemy2['money']}\n")
 
-    enemy3 = new_random_monster()
+    enemy3 = random_monster()
     print(enemy3['name'])
     print(f"Stats -> HP: {enemy3['health']} | DMG: {enemy3['power']} | Loot: {enemy3['money']}\n")
 
@@ -129,3 +156,6 @@ if __name__ == "__main__":
     print_shop_menu("Rock Pick", 31, "Sample Bag", 1.234)
     print_shop_menu("Battery", 0.23, "Rations", 12.34)
     print_shop_menu("Lab Coat", 150.0, "Hard Hat", 75.5)
+
+if __name__ == "__main__":
+    test_functions()
