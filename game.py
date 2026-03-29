@@ -3,7 +3,7 @@ Module: game.py
 Author: Cael O'Dell
 Description: A simple text-based game that uses gamefunctions.py.
 Prompts the user for their name, shows a shop, and spawns an enemy.
-Date: 3-22-2026
+Date: 3-29-2026
 """
 import gamefunctions
 
@@ -18,25 +18,22 @@ def main():
     Returns:
         None.
     """
-    # greet the player
-    name = input("Enter your name: ")
-    gamefunctions.print_welcome(name, 30)
+    """greet the player"""
+    name = input("What is your name?\n")
+    gamefunctions.print_welcome(name, 35)
 
-    # show the shop and handle a purchase
-    print("\nWelcome to the field supply shop!")
-    gamefunctions.print_shop_menu("Rock Pick", 31.00, "Sample Bag", 12.50)
+    hp, gold = 30, 10
 
-    money = 50.00
-    quantity = int(input("\nHow many Rock Picks would you like to buy? "))
-    purchased, remaining = gamefunctions.purchase_item(31.00, money, quantity)
-    print(f"Purchased: {purchased} | Remaining balance: ${remaining:.2f}")
+    while True:
+        action = gamefunctions.get_town_action(hp, gold)
+        if action == "1":
+            hp, gold = gamefunctions.fight_monster(hp, gold)
+        elif action == "2":
+            hp, gold = gamefunctions.sleep(hp, gold)
+        elif action == "3":
+            print("Thanks for playing! Goodbye!")
+            break
 
-    # spawn a random enemy
-    print("\nYou venture into the field...")
-    monster = gamefunctions.random_monster()
-    print(f"A {monster['name']} appears!")
-    print(monster['description'])
-    print(f"HP: {monster['health']} | Power: {monster['power']} | Loot: ${monster['money']}")
 
 
 if __name__ == "__main__":
