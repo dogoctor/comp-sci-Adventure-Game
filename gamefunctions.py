@@ -20,6 +20,12 @@ def purchase_item(itemPrice, startingMoney, quantityToPurchase=1):
     return actual_purchased, leftover_money
 
 
+def print_welcome(name, width):
+    """Prints a centered welcome message for the player."""
+    message = f"Welcome, {name}!"
+    print(message.center(width))
+
+
 def random_monster():
     # initialize the required dictionary keys
     monster = {
