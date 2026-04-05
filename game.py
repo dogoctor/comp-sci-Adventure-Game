@@ -1,9 +1,9 @@
 """
 Module: game.py
 Author: Cael O'Dell
-Description: A simple text-based game that uses gamefunctions.py.
+Description: A text-based game that uses gamefunctions.py.
 Prompts the user for their name, shows a shop, and spawns an enemy.
-Date: 3-29-2026
+Date: 4-05-2026
 """
 import gamefunctions
 
@@ -22,18 +22,26 @@ def main():
     name = input("What is your name?\n")
     gamefunctions.print_welcome(name, 35)
 
-    hp, gold = 30, 10
+    state = {
+        "player": name,
+        "player_hp": 30,
+        "player_gold": 100,
+        "player_inventory": []
+    }
 
     while True:
-        action = gamefunctions.get_town_action(hp, gold)
+        action = gamefunctions.get_town_action(state)
         if action == "1":
-            hp, gold = gamefunctions.fight_monster(hp, gold)
+            gamefunctions.fight_monster(state)
         elif action == "2":
-            hp, gold = gamefunctions.sleep(hp, gold)
+            gamefunctions.sleep(state)
         elif action == "3":
-            print("Thanks for playing! Goodbye!")
+            gamefunctions.show_shop(state)
+        elif action == "4":
+            gamefunctions.equip_item(state)
+        elif action == "5":
+            print("Thanks for playing, goodbye!")
             break
-
 
 
 if __name__ == "__main__":

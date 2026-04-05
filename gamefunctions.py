@@ -2,10 +2,37 @@
 # Author: Cael O'Dell
 # Description: Function for handling game economy and generating custom enemies
 #Computer Science
-#2-29-2026
+#4-05-2026
 
 import random
+import copy
 
+SHOP_ITEMS = [
+    {
+        "name": "Obsidian Shard",
+        "type": "weapon",
+        "price": 15,
+        "damage_bonus": 8,
+        "max_durability": 12,
+        "current_durability": 11,
+        "equipped": False
+    },
+    {
+        "name": "Eye of the Warden",
+        "type": "consumable",
+        "price": 20,
+        "description": "A pulsating sculk node. All monsters flee from its signal. Single use."
+    },
+    {
+        "name": "Core Breaker",
+        "type": "weapon",
+        "price": 3,
+        "damage_bonus": 2,
+        "max_durability": 6,
+        "current_durability": 5,
+        "equipped": False
+    }
+]
 
 def purchase_item(itemPrice, startingMoney, quantityToPurchase=1):
     # figure out the absolute max we can afford
@@ -64,71 +91,163 @@ def random_monster():
 
     return monster
 
-def get_town_action(hp, gold):
-    """Displays town menu and returns a validated choice ('1', '2', or '3')."""
+def get_town_action(state):
+    """Displays town menu and returns a validated choice ('1'-'5')."""
     print(f"\nYou are in town.")
-    print(f"Current HP: {hp} | Current Gold: {gold}")
+    print(f"Current HP: {state['player_hp']} | Current Gold: {state['player_gold']}")
     print("What would you like to do?")
     print("  1) Leave town (Fight Monster)")
     print("  2) Sleep (Restore HP for 5 Gold)")
-    print("  3) Quit")
+    print("  3) Visit the Outfitter's Cache")
+    print("  4) Equip Item")
+    print("  5) Quit")
     while True:
         choice = input("Enter choice: ").strip()
-        if choice in ("1", "2", "3"):
+        if choice in ("1", "2", "3", "4", "5"):
             return choice
-        print("Invalid choice. Please enter 1, 2, or 3.")
+        print("Invalid choice. Please enter 1-5.")
 
 def display_fight_status(char_hp, monster):
     """Prints current HP for both the player and the monster."""
     print(f"\n  Your HP: {char_hp} | {monster['name']} HP: {monster['health']}")
 
-
-def get_fight_action():
-    """Displays combat options and returns a validated choice ('1' or '2')."""
-    print("  1) Attack")
-    print("  2) Run Away")
-    while True:
-        choice = input("  Enter choice: ").strip()
-        if choice in ("1", "2"):
-            return choice
-        print("  Invalid choice. Enter 1 or 2.")
-
-
-def fight_monster(hp, gold):
-    """Runs a full combat encounter. Returns updated (hp, gold)."""
+def fight_monster(state):
+    """Runs a full combat encounter. Mutates state in place."""
     monster = random_monster()
-    char_damage = 10
+    base_damage = 10
+
+    equipped_weapon = next(
+        (item for item in state["player_inventory"]
+         if item["type"] == "weapon" and item.get("equipped") and item["current_durability"] > 0),
+        None
+    )
+    char_damage = base_damage + (equipped_weapon["damage_bonus"] if equipped_weapon else 0)
+
     print(f"\nA {monster['name']} appears!")
     print(monster['description'])
-    while hp > 0 and monster["health"] > 0:
-        display_fight_status(hp, monster)
-        action = get_fight_action()
-        if action == "1":
+
+    while state["player_hp"] > 0 and monster["health"] > 0:
+        display_fight_status(state["player_hp"], monster)
+
+        bane = next(
+            (item for item in state["player_inventory"]
+             if item["type"] == "consumable" and item["name"] == "Eye of the Warden"),
+            None
+        )
+
+        print("  1) Attack")
+        if bane:
+            print("  2) Use Eye of the Warden (instantly defeats monster)")
+        print("  3) Run Away")
+
+        while True:
+            choice = input("  Enter choice: ").strip()
+            valid = ["1", "3"] + (["2"] if bane else [])
+            if choice in valid:
+                break
+            print("  Invalid choice.")
+
+        if choice == "1":
             monster["health"] -= char_damage
+            if equipped_weapon:
+                equipped_weapon["current_durability"] -= 1
+                if equipped_weapon["current_durability"] <= 0:
+                    print(f"  Your {equipped_weapon['name']} shatters into volcanic glass!")
+                    equipped_weapon["equipped"] = False
+                    state["player_inventory"].remove(equipped_weapon)
+                    equipped_weapon = None
+                    char_damage = base_damage
             if monster["health"] > 0:
-                hp -= monster["power"]
-        elif action == "2":
-            print("You ran away!")
-            break
-    if hp <= 0:
-        print("You were knocked out...")
-        hp = 1
+                state["player_hp"] -= monster["power"]
+
+        elif choice == "2":
+            print(f"  The Eye pulses. The {monster['name']} goes still and retreats into the dark.")
+            state["player_inventory"].remove(bane)
+            monster["health"] = 0
+
+        elif choice == "3":
+            print("You fled into the tunnels.")
+            return
+
+    if state["player_hp"] <= 0:
+        print("You were knocked out and dragged back to town...")
+        state["player_hp"] = 1
     elif monster["health"] <= 0:
         print(f"You defeated the {monster['name']}! Gained {monster['money']} gold.")
-        gold += monster["money"]
-    return hp, gold
+        state["player_gold"] += monster["money"]
 
 
-def sleep(hp, gold):
-    """Restores HP to 30 for 5 gold. Returns updated (hp, gold)."""
+def sleep(state):
+    """Restores HP to 30 for 5 gold. Mutates state in place."""
     cost = 5
-    if gold >= cost:
-        gold -= cost
-        hp = 30
-        print(f"You sleep at the inn. HP restored to 30. Gold remaining: {gold}")
+    if state["player_gold"] >= cost:
+        state["player_gold"] -= cost
+        state["player_hp"] = 30
+        print(f"You rest at the camp. HP restored to 30. Gold remaining: {state['player_gold']}")
     else:
-        print("Not enough gold to sleep at the inn!")
-    return hp, gold
+        print("Not enough gold to rest!")
+
+def show_shop(state):
+    """Displays shop, handles purchases, adds items to player inventory."""
+    print("\n--- Outfitter's Cache ---")
+    for i, item in enumerate(SHOP_ITEMS, 1):
+        print(f"  {i}) {item['name']} — {item['price']} gold", end="")
+        if item["type"] == "weapon":
+            print(f" | +{item['damage_bonus']} damage | Durability: {item['max_durability']}", end="")
+        elif item["type"] == "consumable":
+            print(f" | {item['description']}", end="")
+        print()
+    print(f"  0) Leave")
+    print(f"Current Gold: {state['player_gold']}")
+
+    while True:
+        choice = input("Enter choice: ").strip()
+        if choice == "0":
+            break
+        if not choice.isdigit() or not (1 <= int(choice) <= len(SHOP_ITEMS)):
+            print(f"Invalid choice. Enter 0-{len(SHOP_ITEMS)}.")
+            continue
+        item_template = SHOP_ITEMS[int(choice) - 1]
+        if state["player_gold"] < item_template["price"]:
+            print("Not enough gold!")
+            continue
+        state["player_gold"] -= item_template["price"]
+        state["player_inventory"].append(copy.deepcopy(item_template))
+        print(f"You pocketed the {item_template['name']}. Gold remaining: {state['player_gold']}")
+
+
+def equip_item(state):
+    """Lets the player equip a weapon. Only shows weapon-type items."""
+    weapons = [item for item in state["player_inventory"] if item["type"] == "weapon"]
+
+    if not weapons:
+        print("\nNo equippable items in inventory.")
+        return
+
+    print("\n--- Equipment ---")
+    for i, item in enumerate(weapons, 1):
+        equipped_str = " [EQUIPPED]" if item.get("equipped") else ""
+        print(f"  {i}) {item['name']} | Durability: {item['current_durability']}/{item['max_durability']}{equipped_str}")
+    print("  0) None (unequip)")
+
+    while True:
+        choice = input("Enter choice: ").strip()
+        if choice == "0":
+            for item in state["player_inventory"]:
+                if item["type"] == "weapon":
+                    item["equipped"] = False
+            print("Weapon unequipped.")
+            return
+        if not choice.isdigit() or not (1 <= int(choice) <= len(weapons)):
+            print("Invalid choice.")
+            continue
+        for item in state["player_inventory"]:
+            if item["type"] == "weapon":
+                item["equipped"] = False
+        selected = weapons[int(choice) - 1]
+        selected["equipped"] = True
+        print(f"{selected['name']} equipped.")
+        return
 
 if __name__ == "__main__":
     print("--- Testing purchase_item ---")
