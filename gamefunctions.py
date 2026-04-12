@@ -2,8 +2,10 @@
 # Author: Cael O'Dell
 # Description: Function for handling game economy and generating custom enemies
 #Computer Science
-#4-05-2026
+#4-12-2026
 
+import json
+import os
 import random
 import copy
 
@@ -101,11 +103,12 @@ def get_town_action(state):
     print("  3) Visit the Outfitter's Cache")
     print("  4) Equip Item")
     print("  5) Quit")
+    print("  6) Save and Quit")
     while True:
         choice = input("Enter choice: ").strip()
-        if choice in ("1", "2", "3", "4", "5"):
+        if choice in ("1", "2", "3", "4", "5", "6"):
             return choice
-        print("Invalid choice. Please enter 1-5.")
+        print("Invalid choice. Please enter 1-6.")
 
 def display_fight_status(char_hp, monster):
     """Prints current HP for both the player and the monster."""
@@ -215,7 +218,6 @@ def show_shop(state):
         state["player_inventory"].append(copy.deepcopy(item_template))
         print(f"You pocketed the {item_template['name']}. Gold remaining: {state['player_gold']}")
 
-
 def equip_item(state):
     """Lets the player equip a weapon. Only shows weapon-type items."""
     weapons = [item for item in state["player_inventory"] if item["type"] == "weapon"]
@@ -248,6 +250,20 @@ def equip_item(state):
         selected["equipped"] = True
         print(f"{selected['name']} equipped.")
         return
+
+def save_game(state, filename="savegame.json"):
+    """Saves the current state dictionary to a JSON file."""
+    with open(filename, "w") as f:
+        json.dump(state, f, indent=4)
+    print("Game progress saved!")
+
+def load_game(filename="savegame.json"):
+    """Loads the state dictionary from a JSON file. Returns None if file doesn't exist."""
+    if os.path.exists(filename):
+        with open(filename, "r") as f:
+            return json.load(f)
+    return None
+
 
 if __name__ == "__main__":
     print("--- Testing purchase_item ---")
