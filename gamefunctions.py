@@ -64,7 +64,6 @@ def random_monster():
         "power": 0,
         "money": 0
     }
-
     # pick one of three custom enemies
     enemy_type = random.choice(["Bogged", "Sentient Core Sample", "Malfunctioning CLOD"])
 
@@ -93,12 +92,75 @@ def random_monster():
 
     return monster
 
+def move_player(map_state, direction):
+    """
+    Moves the player one grid space in the given direction on a 10x10 grid.
+    Updates map_state in place.
+    Returns 'moved', 'returned_to_town', or 'monster_encounter'.
+    """
+    x, y = map_state["player_pos"]
+
+    if direction == "up":
+        y = max(0, y - 1)
+    elif direction == "down":
+        y = min(9, y + 1)
+    elif direction == "left":
+        x = max(0, x - 1)
+    elif direction == "right":
+        x = min(9, x + 1)
+
+    map_state["player_pos"] = [x, y]
+
+    if [x, y] == map_state["town_pos"]:
+        return "returned_to_town"
+    elif [x, y] == map_state["monster_pos"]:
+        return "monster_encounter"
+    return "moved"
+
+def run_map_interface(map_state):
+    """
+    Runs the text-based map interface.
+    Player uses w/a/s/d to move, q to return to town.
+    Returns 'town' or 'monster'.
+    """
+    direction_map = {"w": "up", "s": "down", "a": "left", "d": "right"}
+
+    while True:
+        print()
+        for row in range(10):
+            line = ""
+            for col in range(10):
+                pos = [col, row]
+                if pos == map_state["player_pos"]:
+                    line += "P"
+                elif pos == map_state["town_pos"]:
+                    line += "T"
+                elif pos == map_state["monster_pos"]:
+                    line += "M"
+                else:
+                    line += "."
+            print(line)
+        print("Move: w/a/s/d | q to return to town")
+
+        key = input("Enter move: ").strip().lower()
+        if key == "q":
+            return "town"
+        if key not in direction_map:
+            print("Invalid input.")
+            continue
+
+        result = move_player(map_state, direction_map[key])
+        if result == "returned_to_town":
+            return "town"
+        elif result == "monster_encounter":
+            return "monster"
+
 def get_town_action(state):
     """Displays town menu and returns a validated choice ('1'-'5')."""
     print(f"\nYou are in town.")
     print(f"Current HP: {state['player_hp']} | Current Gold: {state['player_gold']}")
     print("What would you like to do?")
-    print("  1) Leave town (Fight Monster)")
+    print("  1) Explore")
     print("  2) Sleep (Restore HP for 5 Gold)")
     print("  3) Visit the Outfitter's Cache")
     print("  4) Equip Item")

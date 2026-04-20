@@ -6,6 +6,7 @@ Prompts the user for their name, shows a shop, and spawns an enemy.
 Date: 4-12-2026
 """
 import gamefunctions
+import random
 
 
 def main():
@@ -27,6 +28,13 @@ def main():
         if state is None:
             print("No save file found. Starting new game.")
             load_choice = "n"
+        else:
+            if "map_state" not in state:
+                state["map_state"] = {
+                    "player_pos": [0, 0],
+                    "town_pos": [0, 0],
+                    "monster_pos": [5, 5]
+                }
 
     if load_choice != "y":
         name = input("What is your name?\n")
@@ -35,7 +43,12 @@ def main():
             "player": name,
             "player_hp": 30,
             "player_gold": 100,
-            "player_inventory": []
+            "player_inventory": [],
+            "map_state": {
+                "player_pos": [0, 0],
+                "town_pos": [0, 0],
+                "monster_pos": [5, 5]
+            }
         }
     else:
         print(f"Welcome back, {state['player']}!")
@@ -43,7 +56,19 @@ def main():
     while True:
         action = gamefunctions.get_town_action(state)
         if action == "1":
-            gamefunctions.fight_monster(state)
+            while True:
+                result = gamefunctions.run_map_interface(state["map_state"])
+                if result == "town":
+                    break
+                elif result == "monster":
+                    gamefunctions.fight_monster(state)
+                    while True:
+                        new_pos = [random.randint(0, 9), random.randint(0, 9)]
+                        if (new_pos != state["map_state"]["town_pos"] and
+                                new_pos != state["map_state"]["player_pos"]):
+                            state["map_state"]["monster_pos"] = new_pos
+                            break
+
         elif action == "2":
             gamefunctions.sleep(state)
         elif action == "3":
