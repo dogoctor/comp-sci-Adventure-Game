@@ -2,8 +2,9 @@
 # Author: Cael O'Dell
 # Description: Function for handling game economy and generating custom enemies
 #Computer Science
-#4-12-2026
+#4-26-2026
 
+from WanderingMonster import WanderingMonster
 import json
 import os
 import random
@@ -113,47 +114,84 @@ def move_player(map_state, direction):
 
     if [x, y] == map_state["town_pos"]:
         return "returned_to_town"
-    elif [x, y] == map_state["monster_pos"]:
-        return "monster_encounter"
     return "moved"
 
-def run_map_interface(map_state):
-    """
-    Runs the text-based map interface.
-    Player uses w/a/s/d to move, q to return to town.
-    Returns 'town' or 'monster'.
-    """
+def draw_map(state):
+    """Renders the 10x10 grid with player, town, and all wandering monsters."""
+    map_state = state["map_state"]
+    monster_positions = {(m.x, m.y) for m in state["monsters"]}
+    print()
+    for row in range(10):
+        line = ""
+        for col in range(10):
+            if [col, row] == map_state["player_pos"]:
+                line += "P"
+            elif [col, row] == map_state["town_pos"]:
+                line += "T"
+            elif (col, row) in monster_positions:
+                line += "M"
+            else:
+                line += "."
+        print(line)
+
+def run_map_interface(state):
+    map_state = state["map_state"]
     direction_map = {"w": "up", "s": "down", "a": "left", "d": "right"}
+    draw_map(state)
 
     while True:
-        print()
-        for row in range(10):
-            line = ""
-            for col in range(10):
-                pos = [col, row]
-                if pos == map_state["player_pos"]:
-                    line += "P"
-                elif pos == map_state["town_pos"]:
-                    line += "T"
-                elif pos == map_state["monster_pos"]:
-                    line += "M"
-                else:
-                    line += "."
-            print(line)
         print("Move: w/a/s/d | q to return to town")
-
         key = input("Enter move: ").strip().lower()
         if key == "q":
             return "town"
-        if key not in direction_map:
-            print("Invalid input.")
+        if not key or key not in direction_map:
             continue
 
+        old_pos = list(map_state["player_pos"])
         result = move_player(map_state, direction_map[key])
         if result == "returned_to_town":
             return "town"
-        elif result == "monster_encounter":
-            return "monster"
+
+        player_moved = map_state["player_pos"] != old_pos
+
+        # Check player vs monster collision
+        px, py = map_state["player_pos"]
+        hit = next((m for m in state["monsters"] if m.x == px and m.y == py), None)
+        if hit:
+            power_map = {
+                "Bogged Skeleton":       (random.randint(3, 7),   random.randint(2, 6)),
+                "Eagle Formation Golem": (random.randint(15, 30), random.randint(40, 80)),
+                "Rogue CLOD":            (random.randint(8, 25),  random.randint(15, 30)),
+            }
+            power, money = power_map.get(hit.monster_type, (8, 5))
+            combat_dict = {
+                "name": hit.monster_type,
+                "description": f"A wandering {hit.monster_type}!",
+                "health": hit.hp,
+                "power": power,
+                "money": money
+            }
+            fight_monster(state, combat_dict)
+            if combat_dict["health"] <= 0:
+                state["monsters"].remove(hit)
+
+        # Monsters only move if player moved
+        if player_moved:
+            player_pos = tuple(map_state["player_pos"])
+            town_pos   = tuple(map_state["town_pos"])
+            forbidden  = [player_pos, town_pos]
+            for m in state["monsters"]:
+                others = [(o.x, o.y) for o in state["monsters"] if o is not m]
+                m.move(others, forbidden, 10, 10, player_pos=player_pos)
+
+            if not state["monsters"]:
+                for _ in range(2):
+                    occupied = [(m.x, m.y) for m in state["monsters"]]
+                    state["monsters"].append(
+                        WanderingMonster.random_spawn(occupied, list(forbidden), 10, 10)
+                    )
+
+        draw_map(state)
 
 def get_town_action(state):
     """Displays town menu and returns a validated choice ('1'-'5')."""
@@ -176,9 +214,9 @@ def display_fight_status(char_hp, monster):
     """Prints current HP for both the player and the monster."""
     print(f"\n  Your HP: {char_hp} | {monster['name']} HP: {monster['health']}")
 
-def fight_monster(state):
-    """Runs a full combat encounter. Mutates state in place."""
-    monster = random_monster()
+def fight_monster(state, monster=None):
+    if monster is None:
+        monster = random_monster()
     base_damage = 10
 
     equipped_weapon = next(
@@ -315,8 +353,10 @@ def equip_item(state):
 
 def save_game(state, filename="savegame.json"):
     """Saves the current state dictionary to a JSON file."""
+    save_state = dict(state)
+    save_state["monsters"] = [m.to_dict() for m in state["monsters"]]
     with open(filename, "w") as f:
-        json.dump(state, f, indent=4)
+        json.dump(save_state, f, indent=4)
     print("Game progress saved!")
 
 def load_game(filename="savegame.json"):
