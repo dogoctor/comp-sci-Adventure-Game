@@ -37,6 +37,12 @@ SHOP_ITEMS = [
     }
 ]
 
+FOSSIL_DROPS = {
+    "Bogged Skeleton":       {"name": "Bogged Bone Sample",        "type": "sample", "value": 8},
+    "Eagle Formation Golem": {"name": "Eagle Fm. Sandstone",    "type": "sample", "value": 25},
+    "Rogue CLOD":            {"name": "Corrupted Field Note",   "type": "sample", "value": 15},
+}
+
 def purchase_item(itemPrice, startingMoney, quantityToPurchase=1):
     # figure out the absolute max we can afford
     max_affordable = startingMoney // itemPrice
@@ -55,6 +61,16 @@ def print_welcome(name, width):
     message = f"Welcome, {name}!"
     print(message.center(width))
 
+def sell_samples(state):
+    samples = [i for i in state["player_inventory"] if i["type"] == "sample"]
+    if not samples:
+        print("No samples to sell.")
+        return
+    total = sum(s["value"] for s in samples)
+    for s in samples:
+        state["player_inventory"].remove(s)
+    state["player_gold"] += total
+    print(f"Sold {len(samples)} sample(s) for {total} gold!")
 
 def random_monster():
     # initialize the required dictionary keys
@@ -278,6 +294,11 @@ def fight_monster(state, monster=None):
     elif monster["health"] <= 0:
         print(f"You defeated the {monster['name']}! Gained {monster['money']} gold.")
         state["player_gold"] += monster["money"]
+        drop = FOSSIL_DROPS.get(monster["name"])
+        if drop and random.random() < 0.6:  # 60% drop chance
+            import copy
+            state["player_inventory"].append(copy.deepcopy(drop))
+            print(f"  You collected a {drop['name']}!")
 
 
 def sleep(state):
@@ -300,6 +321,7 @@ def show_shop(state):
         elif item["type"] == "consumable":
             print(f" | {item['description']}", end="")
         print()
+    print(f"  s) Sell Geological Samples")
     print(f"  0) Leave")
     print(f"Current Gold: {state['player_gold']}")
 
@@ -307,16 +329,19 @@ def show_shop(state):
         choice = input("Enter choice: ").strip()
         if choice == "0":
             break
-        if not choice.isdigit() or not (1 <= int(choice) <= len(SHOP_ITEMS)):
-            print(f"Invalid choice. Enter 0-{len(SHOP_ITEMS)}.")
+        elif choice == "s":
+            sell_samples(state)
+        elif not choice.isdigit() or not (1 <= int(choice) <= len(SHOP_ITEMS)):
+            print(f"Invalid choice. Enter 0-{len(SHOP_ITEMS)} or s.")
             continue
-        item_template = SHOP_ITEMS[int(choice) - 1]
-        if state["player_gold"] < item_template["price"]:
-            print("Not enough gold!")
-            continue
-        state["player_gold"] -= item_template["price"]
-        state["player_inventory"].append(copy.deepcopy(item_template))
-        print(f"You pocketed the {item_template['name']}. Gold remaining: {state['player_gold']}")
+        else:
+            item_template = SHOP_ITEMS[int(choice) - 1]
+            if state["player_gold"] < item_template["price"]:
+                print("Not enough gold!")
+                continue
+            state["player_gold"] -= item_template["price"]
+            state["player_inventory"].append(copy.deepcopy(item_template))
+            print(f"You pocketed the {item_template['name']}. Gold remaining: {state['player_gold']}")
 
 def equip_item(state):
     """Lets the player equip a weapon. Only shows weapon-type items."""
